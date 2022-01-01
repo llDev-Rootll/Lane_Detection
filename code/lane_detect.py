@@ -1,7 +1,9 @@
 import numpy as np 
 import cv2
 
-cap = cv2.VideoCapture('challenge_video.mp4')
+cap = cv2.VideoCapture('../data/challenge_video.mp4')
+
+
 #Camera Matrix
 K = np.array([[  1.15422732e+03,   0.00000000e+00,   6.71627794e+02],
  [  0.00000000e+00,   1.14818221e+03,   3.86046312e+02],
@@ -66,15 +68,32 @@ def average_slope_intercept(image, lines):
 	except:
 		return np.array([])
 
-
+def draw_on_img(image, lines):
+	try:
+		x1, y1, x2, y2 = lines[0]
+		x3, y3, x4, y4 = lines[1]
+		contours = np.array([[x2,y2], [x4,y4], [x3,y3], [x1,y1]])
+		poly_image = np.zeros_like(image)
+		cv2.fillPoly(poly_image, pts = [contours], color =(255, 0, 0))
+		combo_image = cv2.addWeighted(image, 0.98, poly_image, 1, 1)
+		return combo_image
+	except:
+		return image
+		
+# frame_width = int(cap.get(3))
+# frame_height = int(cap.get(4))
+# print(frame_width, frame_height)
+# Define the codec and create VideoWriter object.The output is stored in 'outpy.avi' file.
+out = cv2.VideoWriter('output.avi',cv2.VideoWriter_fourcc('M','J','P','G'), 10, (1200, 617))
 if (cap.isOpened()== False): 
 	print("Error opening video stream or file")
 
 while(cap.isOpened()):
 	
 	ret, frame = cap.read()
-	img = frame.copy()
+	
 	if ret == True:
+		img = frame.copy()
 		h,  w = img.shape[:2]
 		newcameramtx, roi = cv2.getOptimalNewCameraMatrix(K, dist, (w,h), 1, (w,h))
 		# undistort
@@ -103,21 +122,23 @@ while(cap.isOpened()):
 
 		reg_img = region(edges)
 		#Hough transform
-		lines = cv2.HoughLinesP(reg_img, rho=6, theta=np.pi/60, threshold=30, minLineLength=40, maxLineGap=150)
+		lines = cv2.HoughLinesP(reg_img, rho=6, theta=np.pi/60, threshold=25, minLineLength=40, maxLineGap=150)
 		lines = average_slope_intercept(edges, lines)
-
+		overlayed_img = draw_on_img(frame, lines)
+		# print(overlayed_img.shape)
 		# print(lines)
-		# Draw lines on the image
-		try :
-			if lines is not None:
-				print(lines)
-				for line in lines:
-						x1, y1, x2, y2 = line
-						cv2.line(frame, (x1, y1), (x2, y2), (0, 0, 255), 3)
-		except Exception as e:
-			print(e)
-		cv2.imshow("processed",edges)
-		cv2.imshow("Frame", frame)    
+		#Draw lines on the image
+		# try :
+		# 	if lines is not None:
+		# 		print(lines)
+		# 		for line in lines:
+		# 				x1, y1, x2, y2 = line
+		# 				cv2.line(overlayed_img, (x1, y1), (x2, y2), (0, 0, 255), 3)
+		# except Exception as e:
+		# 	print(e)
+		cv2.imshow("processed",overlayed_img)
+		out.write(overlayed_img)
+		# cv2.imshow("Frame", frame)    
 		
 
 
@@ -129,4 +150,5 @@ while(cap.isOpened()):
 
 
 cap.release()
+out.release()
 cv2.destroyAllWindows()
