@@ -15,6 +15,14 @@ dist = np.array([[ -2.42565104e-01,  -4.77893070e-02,  -1.31388084e-03,  -8.7910
 
 
 def get_yellow_line(img):
+	""" Function to extract yellow lane line using HSV values
+
+	Args:
+		img : numpy image
+
+	Returns:
+		mask : returns binary mask for yellow lane line
+	"""
 	image = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
 	lower = np.array([22, 93, 0], dtype="uint8")
 	upper = np.array([45, 255, 255], dtype="uint8")
@@ -24,16 +32,26 @@ def get_yellow_line(img):
 	return mask
 
 def region(image):
-		height, width = image.shape
-		triangle = np.array([
-											 [(100, height), (475, 325), (width, height)]
-											 ])
-		mask = np.zeros_like(image)
-		mask = cv2.fillPoly(mask, triangle, 255)
-		mask = cv2.bitwise_and(image, mask)
-		return mask
+	"""Defines a region for the detection of lanes
+
+	Args:
+		image : numpy image
+
+	Returns:
+		mask : returns masked image region
+	"""
+	height, width = image.shape
+	triangle = np.array([
+											[(100, height), (475, 325), (width, height)]
+											])
+	mask = np.zeros_like(image)
+	mask = cv2.fillPoly(mask, triangle, 255)
+	mask = cv2.bitwise_and(image, mask)
+	return mask
 
 def create_coordinates(image, line_parameters):
+	"""Generate line coordinates from slope and intercept
+	"""
 	try:
 		slope, intercept = line_parameters
 	except :
@@ -45,6 +63,16 @@ def create_coordinates(image, line_parameters):
 	return np.array([x1, y1, x2, y2])
 
 def average_slope_intercept(image, lines):
+	"""For each set of points fit a line and generate the average of slopes and intercepts
+	   for left and right line
+
+	Args:
+		image : numpy image
+		lines : list of lines detected from hough transform
+
+	Returns:
+		[type]: [description]
+	"""
 	left_fit = []
 	right_fit = []
 	try:
@@ -80,10 +108,8 @@ def draw_on_img(image, lines):
 	except:
 		return image
 		
-# frame_width = int(cap.get(3))
-# frame_height = int(cap.get(4))
-# print(frame_width, frame_height)
-# Define the codec and create VideoWriter object.The output is stored in 'outpy.avi' file.
+	"""Generate output video
+	"""
 out = cv2.VideoWriter('output.avi',cv2.VideoWriter_fourcc('M','J','P','G'), 10, (1200, 617))
 if (cap.isOpened()== False): 
 	print("Error opening video stream or file")
@@ -113,9 +139,10 @@ while(cap.isOpened()):
 		ret, thresh = cv2.threshold(img,205,255,cv2.THRESH_BINARY)
 		
 		gray_img = thresh + y_mask
-		#opening
-		kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
-		opening = cv2.morphologyEx(gray_img, cv2.MORPH_OPEN, kernel)
+		# opening
+		# kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+		# opening = cv2.morphologyEx(gray_img, cv2.MORPH_OPEN, kernel)
+
 		#Edge detection
 		edges = cv2.Canny(gray_img, 100, 120)
 		# define region  TODO : Possible to replace with Homography
@@ -125,22 +152,9 @@ while(cap.isOpened()):
 		lines = cv2.HoughLinesP(reg_img, rho=6, theta=np.pi/60, threshold=25, minLineLength=40, maxLineGap=150)
 		lines = average_slope_intercept(edges, lines)
 		overlayed_img = draw_on_img(frame, lines)
-		# print(overlayed_img.shape)
-		# print(lines)
-		#Draw lines on the image
-		# try :
-		# 	if lines is not None:
-		# 		print(lines)
-		# 		for line in lines:
-		# 				x1, y1, x2, y2 = line
-		# 				cv2.line(overlayed_img, (x1, y1), (x2, y2), (0, 0, 255), 3)
-		# except Exception as e:
-		# 	print(e)
+
 		cv2.imshow("processed",overlayed_img)
 		out.write(overlayed_img)
-		# cv2.imshow("Frame", frame)    
-		
-
 
 		if cv2.waitKey(25) & 0xFF == ord('q'):
 			break
