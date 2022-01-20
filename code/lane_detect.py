@@ -103,22 +103,37 @@ def draw_on_img(image, lines):
 		contours = np.array([[x2,y2], [x4,y4], [x3,y3], [x1,y1]])
 		poly_image = np.zeros_like(image)
 		cv2.fillPoly(poly_image, pts = [contours], color =(255, 0, 0))
+		# cv2.line(poly_image, (int(x1), int(y1)), (int(x2),int(y2)), (0,0,255), 3)
+		# cv2.line(poly_image, (int(x3), int(y3)), (int(x4),int(y4)), (0,0,255), 3)
 		combo_image = cv2.addWeighted(image, 0.98, poly_image, 1, 1)
 		return combo_image
 	except:
 		return image
-		
+
+def get_slope(lines):
+	try:
+		x1, y1, x2, y2 = lines[0]
+		x3, y3, x4, y4 = lines[1]
+		tx, ty = (x2 + x4)/2, (y2 + y4)/2
+		bx, by = (x3 + x1)/2, (y3 + y1)/2
+		slope = (ty - by)/(tx - bx)
+
+		return[tx, ty, bx, by]
+	except:
+		pass 
+
 	"""Generate output video
 	"""
 out = cv2.VideoWriter('output.avi',cv2.VideoWriter_fourcc('M','J','P','G'), 10, (1200, 617))
 if (cap.isOpened()== False): 
 	print("Error opening video stream or file")
-
+avg_slope=[]
 while(cap.isOpened()):
 	
 	ret, frame = cap.read()
 	
 	if ret == True:
+		
 		img = frame.copy()
 		h,  w = img.shape[:2]
 		newcameramtx, roi = cv2.getOptimalNewCameraMatrix(K, dist, (w,h), 1, (w,h))
@@ -139,7 +154,7 @@ while(cap.isOpened()):
 		ret, thresh = cv2.threshold(img,205,255,cv2.THRESH_BINARY)
 		
 		gray_img = thresh + y_mask
-		# opening
+		# optional opening
 		# kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
 		# opening = cv2.morphologyEx(gray_img, cv2.MORPH_OPEN, kernel)
 
@@ -148,10 +163,28 @@ while(cap.isOpened()):
 		# define region  TODO : Possible to replace with Homography
 
 		reg_img = region(edges)
+
 		#Hough transform
 		lines = cv2.HoughLinesP(reg_img, rho=6, theta=np.pi/60, threshold=25, minLineLength=40, maxLineGap=150)
 		lines = average_slope_intercept(edges, lines)
+		centre_line = get_slope(lines)
+		
 		overlayed_img = draw_on_img(frame, lines)
+
+		try:
+
+			deviation = centre_line[0] - centre_line[2]
+			if deviation < 7 and deviation > -7:
+				turn_flag = "STRAIGHT"
+			if deviation > 7 : 
+				turn_flag = "RIGHT"
+			if deviation < -7 :
+				turn_flag = "LEFT"
+			cv2.putText(overlayed_img, turn_flag, (50,50), cv2.FONT_HERSHEY_SIMPLEX, 
+                   1, (0,0,255), 2, cv2.LINE_AA)
+   
+		except:
+			pass
 
 		cv2.imshow("processed",overlayed_img)
 		out.write(overlayed_img)
