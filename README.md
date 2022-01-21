@@ -36,3 +36,4 @@ Clone this repository and run the follow line in the terminal to run the lane de
 
     cd ...<path_to_repository>/code/
     python3 lane_detect.py
+ 
